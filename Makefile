@@ -4,7 +4,7 @@ GOBUILD = $(GOCMD) build
 GOTEST = $(GOCMD) test
 APP_NAME = autocomplete-system
 
-.PHONY: help build run test
+.PHONY: help build run test docker-build docker-dev-up docker-dev-stop docker-prod-up docker-prod-stop
 
 # Default target
 help: ## Show this help message
@@ -29,3 +29,29 @@ run: ## Run the application locally
 test: ## Run tests
 	@echo "Running tests..."
 	$(GOTEST) -v -race ./...
+
+## Docker
+.PHONY: docker-build
+docker-build: ## Build Docker image
+	@echo "Building Docker image..."
+	docker build -t $(APP_NAME) .
+
+.PHONY: docker-dev-up
+docker-dev-up: ## Run development environment with docker compose
+	@echo "Starting development environment..."
+	docker compose -f docker-compose.dev.yml up -d
+
+.PHONY: docker-dev-stop
+docker-dev-stop: ## Stop Docker dev containers
+	@echo "Stopping Docker containers..."
+	docker compose -f docker-compose.dev.yml down
+
+.PHONY: docker-prod-up
+docker-prod-up: ## Run production environment with docker compose
+	@echo "Starting production environment..."
+	docker compose up --build -d
+
+.PHONY: docker-prod-stop
+docker-prod-stop: ## Stop Docker containers
+	@echo "Stopping Docker containers..."
+	docker compose down

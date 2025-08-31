@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/amirzre/autocomplete-system/internal/config"
+	"github.com/amirzre/autocomplete-system/internal/storage"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,6 +23,11 @@ const (
 func main() {
 	// Load configuration
 	cfg := config.Load()
+
+	// Set Gin mode based on environment
+	if cfg.App.IsProduction() {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
 	// Create main context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -71,8 +78,9 @@ func main() {
 
 // App holds all application components.
 type App struct {
-	router *gin.Engine
-	cfg    *config.Config
+	router  *gin.Engine
+	cfg     *config.Config
+	storage storage.StorageInterface
 }
 
 // initializeApp sets up all application components.
@@ -80,6 +88,14 @@ func initializeApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	app := &App{
 		cfg: cfg,
 	}
+
+	// Initialize Storage
+	mongoStorage := storage.NewMongoDB(cfg)
+	if err := mongoStorage.Connect(ctx); err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+	app.storage = mongoStorage
+	log.Println("MongoDB connected")
 
 	app.setupRouter()
 	log.Println("Routes configured")
@@ -97,5 +113,13 @@ func (app *App) setupRouter() {
 // cleanup performs graceful cleanup of resources.
 func (app *App) cleanup(ctx context.Context) {
 	log.Println("Cleaning up resources...")
+
+	// Disconnect from storage
+	if app.storage != nil {
+		if err := app.storage.Disconnect(ctx); err != nil {
+			log.Printf("Error disconnecting from storage: %v", err)
+		}
+	}
+
 	log.Println("Cleanup completed")
 }

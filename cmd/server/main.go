@@ -12,6 +12,7 @@ import (
 
 	"github.com/amirzre/autocomplete-system/internal/config"
 	"github.com/amirzre/autocomplete-system/internal/storage"
+	"github.com/amirzre/autocomplete-system/internal/trie"
 	"github.com/gin-gonic/gin"
 )
 
@@ -81,6 +82,7 @@ type App struct {
 	router  *gin.Engine
 	cfg     *config.Config
 	storage storage.StorageInterface
+	trie    *trie.Trie
 }
 
 // initializeApp sets up all application components.
@@ -88,6 +90,10 @@ func initializeApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	app := &App{
 		cfg: cfg,
 	}
+
+	// Initialize Trie
+	app.trie = trie.New()
+	log.Println("Trie initialized")
 
 	// Initialize Storage
 	mongoStorage := storage.NewMongoDB(cfg)

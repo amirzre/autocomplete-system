@@ -3,8 +3,10 @@ package storage
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/amirzre/autocomplete-system/internal/config"
+	"github.com/amirzre/autocomplete-system/internal/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -22,6 +24,12 @@ type MongoDB struct {
 type StorageInterface interface {
 	Connect(ctx context.Context) error
 	Disconnect(ctx context.Context) error
+	UpdateQueryFrequency(ctx context.Context, query string) (*model.Query, error)
+	GetAllQueries(ctx context.Context) ([]model.Query, error)
+	GetQueriesSince(ctx context.Context, since time.Time) ([]model.Query, error)
+	GetTotalQueryCount(ctx context.Context) (int64, error)
+	GetUniqueQueryCount(ctx context.Context) (int64, error)
+	Ping(ctx context.Context) error
 }
 
 // NewMongoDB creates a new MongoDB storage instance.
@@ -72,6 +80,133 @@ func (m *MongoDB) Disconnect(ctx context.Context) error {
 	}
 
 	return m.client.Disconnect(ctx)
+}
+
+// UpdateQueryFrequency increments the frequency of an existing query.
+func (m *MongoDB) UpdateQueryFrequency(ctx context.Context, queryText string) (*model.Query, error) {
+	ctx, cancel := context.WithTimeout(ctx, m.config.DataBase.ConnectTimeout)
+	defer cancel()
+
+	filter := bson.M{"text": queryText}
+	update := bson.M{
+		"$inc": bson.M{"frequency": 1},
+		"$set": bson.M{"updated_at": time.Now()},
+		"$setOnInsert": bson.M{
+			"text":       queryText,
+			"created_at": time.Now(),
+		},
+	}
+
+	options := options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
+
+	var query model.Query
+	err := m.collection.FindOneAndUpdate(ctx, filter, update, options).Decode(&query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update query frequency: %w", err)
+	}
+
+	return &query, nil
+}
+
+// GetAllQueries retrieves all queries from the database.
+func (m *MongoDB) GetAllQueries(ctx context.Context) ([]model.Query, error) {
+	ctx, cancel := context.WithTimeout(ctx, m.config.DataBase.QueryTimeout)
+	defer cancel()
+
+	cursor, err := m.collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all queries: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var queries []model.Query
+	if err := cursor.All(ctx, &queries); err != nil {
+		return nil, fmt.Errorf("failed to decode queries: %w", err)
+	}
+
+	return queries, nil
+}
+
+// GetQueriesSince retrieves queries created since a specific time.
+func (m *MongoDB) GetQueriesSince(ctx context.Context, since time.Time) ([]model.Query, error) {
+	ctx, cancel := context.WithTimeout(ctx, m.config.DataBase.QueryTimeout)
+	defer cancel()
+
+	filter := bson.M{"created_at": bson.M{"$gte": since}}
+	cursor, err := m.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get queries since %v: %w", since, err)
+	}
+	defer cursor.Close(ctx)
+
+	var queries []model.Query
+	if err := cursor.All(ctx, &queries); err != nil {
+		return nil, fmt.Errorf("failed to decode queries: %w", err)
+	}
+
+	return queries, nil
+}
+
+// GetTotalQueryCount returns the total number of query submissions.
+func (m *MongoDB) GetTotalQueryCount(ctx context.Context) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, m.config.DataBase.QueryTimeout)
+	defer cancel()
+
+	pipeline := mongo.Pipeline{
+		{{
+			Key: "$group",
+			Value: bson.D{
+				{Key: "_id", Value: nil},
+				{Key: "total", Value: bson.D{{Key: "$sum", Value: "$frequency"}}},
+			},
+		}},
+	}
+
+	cursor, err := m.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get total count: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var result []bson.M
+	if err := cursor.All(ctx, &result); err != nil {
+		return 0, fmt.Errorf("failed to decode total count: %w", err)
+	}
+
+	if len(result) == 0 {
+		return 0, nil
+	}
+
+	if total, ok := result[0]["total"].(int64); ok {
+		return total, nil
+	}
+
+	return 0, nil
+}
+
+// GetUniqueQueryCount returns the number of unique queries.
+func (m *MongoDB) GetUniqueQueryCount(ctx context.Context) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, m.config.DataBase.QueryTimeout)
+	defer cancel()
+
+	count, err := m.collection.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		return 0, fmt.Errorf("failed to get unique query count: %w", err)
+	}
+
+	return count, nil
+}
+
+// Ping checks the MongoDB connection.
+func (m *MongoDB) Ping(ctx context.Context) error {
+	if m.client == nil {
+		return fmt.Errorf("not connected to MongoDB")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	return m.client.Ping(ctx, nil)
 }
 
 // createIndexes creates necessary indexes for optimal performance.

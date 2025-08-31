@@ -29,6 +29,9 @@ type DatabaseConfig struct {
 	URI             string
 	Name            string
 	QueryCollection string
+	Username        string
+	Password        string
+	AuthDB          string
 	ConnectTimeout  time.Duration
 	QueryTimeout    time.Duration
 }
@@ -59,6 +62,9 @@ func Load() *Config {
 			URI:             getEnv("MONGO_URI", "mongodb://localhost:27017"),
 			Name:            getEnv("DATABASE_NAME", "autocomplete_db"),
 			QueryCollection: getEnv("QUERY_COLLECTION", "queries"),
+			Username:        getEnv("MONGO_USERNAME", ""),
+			Password:        getEnv("MONGO_PASSWORD", ""),
+			AuthDB:          getEnv("MONGO_AUTH_DB", "admin"),
 			ConnectTimeout:  getDurationEnv("DB_CONNECT_TIMEOUT", 10*time.Second),
 			QueryTimeout:    getDurationEnv("DB_QUERY_TIMEOUT", 5*time.Second),
 		},
@@ -73,22 +79,27 @@ func Load() *Config {
 	}
 }
 
-// Address returns the server address
+// Address returns the server address.
 func (s ServerConfig) Address() string {
 	return s.Host + ":" + s.Port
 }
 
-// IsProduction returns true if the environment is production
+// IsProduction returns true if the environment is production.
 func (a AppConfig) IsProduction() bool {
 	return a.Environment == "production"
 }
 
-// IsDevelopment returns true if the environment is development
+// IsDevelopment returns true if the environment is development.
 func (a AppConfig) IsDevelopment() bool {
 	return a.Environment == "development"
 }
 
-// Helper functions for environment variable parsing
+// HasAuthentication returns true if username and password are provided.
+func (d DatabaseConfig) HasAuthentication() bool {
+	return d.Username != "" && d.Password != ""
+}
+
+// Helper functions for environment variable parsing.
 
 func getEnv(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {
@@ -102,16 +113,6 @@ func getIntEnv(key string, fallback int) int {
 	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
-		}
-	}
-
-	return fallback
-}
-
-func getBoolEnv(key string, fallback bool) bool {
-	if value := os.Getenv(key); value != "" {
-		if boolValue, err := strconv.ParseBool(value); err == nil {
-			return boolValue
 		}
 	}
 

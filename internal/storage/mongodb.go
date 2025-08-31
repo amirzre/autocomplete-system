@@ -36,6 +36,15 @@ func (m *MongoDB) Connect(ctx context.Context) error {
 	clientOptions := options.Client().ApplyURI(m.config.DataBase.URI)
 	clientOptions.SetConnectTimeout(m.config.DataBase.ConnectTimeout)
 
+	if m.config.DataBase.HasAuthentication() {
+		credential := options.Credential{
+			AuthSource: m.config.DataBase.AuthDB,
+			Username:   m.config.DataBase.Username,
+			Password:   m.config.DataBase.Password,
+		}
+		clientOptions.SetAuth(credential)
+	}
+
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		return fmt.Errorf("failed to connect to MongoDB: %w", err)

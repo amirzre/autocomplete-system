@@ -14,3 +14,9 @@ type Query struct {
 	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
 }
+
+// Suggestion represents a single autocomplete suggestion.
+type Suggestion struct {
+	Text      string `json:"text"`
+	Frequency int64  `json:"frequency"`
+}

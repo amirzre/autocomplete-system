@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Server   ServerConfig
 	DataBase DatabaseConfig
+	Cache    CacheConfig
 	App      AppConfig
 }
 
@@ -34,6 +35,22 @@ type DatabaseConfig struct {
 	AuthDB          string
 	ConnectTimeout  time.Duration
 	QueryTimeout    time.Duration
+}
+
+// CacheConfig holds cache configuration
+type CacheConfig struct {
+	Host         string
+	Port         string
+	Password     string
+	DB           int
+	PoolSize     int
+	MinIdleConns int
+	MaxRetries   int
+	DialTimeout  time.Duration
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	TTL          time.Duration
+	MaxSize      int
 }
 
 // AppConfig holds general app configuration.
@@ -67,6 +84,20 @@ func Load() *Config {
 			AuthDB:          getEnv("MONGO_AUTH_DB", "admin"),
 			ConnectTimeout:  getDurationEnv("DB_CONNECT_TIMEOUT", 10*time.Second),
 			QueryTimeout:    getDurationEnv("DB_QUERY_TIMEOUT", 5*time.Second),
+		},
+		Cache: CacheConfig{
+			Host:         getEnv("REDIS_HOST", "localhost"),
+			Port:         getEnv("REDIS_PORT", "6379"),
+			Password:     getEnv("REDIS_PASSWORD", ""),
+			DB:           getIntEnv("REDIS_DB", 0),
+			PoolSize:     getIntEnv("REDIS_POOL_SIZE", 10),
+			MinIdleConns: getIntEnv("REDIS_MIN_IDLE_CONNS", 3),
+			MaxRetries:   getIntEnv("REDIS_MAX_RETRIES", 3),
+			DialTimeout:  getDurationEnv("REDIS_DIAL_TIMEOUT", 5*time.Second),
+			ReadTimeout:  getDurationEnv("REDIS_READ_TIMEOUT", 3*time.Second),
+			WriteTimeout: getDurationEnv("REDIS_WRITE_TIMEOUT", 3*time.Second),
+			TTL:          getDurationEnv("REDIS_TTL", 1*time.Hour),
+			MaxSize:      getIntEnv("REDIS_MAX_SIZE", 10000),
 		},
 		App: AppConfig{
 			Name:                getEnv("APP_NAME", "Autocomplete System"),

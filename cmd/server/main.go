@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/amirzre/autocomplete-system/internal/cache"
 	"github.com/amirzre/autocomplete-system/internal/config"
 	"github.com/amirzre/autocomplete-system/internal/storage"
 	"github.com/amirzre/autocomplete-system/internal/trie"
@@ -80,15 +81,16 @@ func main() {
 // App holds all application components.
 type App struct {
 	router  *gin.Engine
-	cfg     *config.Config
+	config  *config.Config
 	storage storage.StorageInterface
+	cache   cache.CacheInterface
 	trie    *trie.Trie
 }
 
 // initializeApp sets up all application components.
-func initializeApp(ctx context.Context, cfg *config.Config) (*App, error) {
+func initializeApp(ctx context.Context, config *config.Config) (*App, error) {
 	app := &App{
-		cfg: cfg,
+		config: config,
 	}
 
 	// Initialize Trie
@@ -96,12 +98,20 @@ func initializeApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	log.Println("Trie initialized")
 
 	// Initialize Storage
-	mongoStorage := storage.NewMongoDB(cfg)
+	mongoStorage := storage.NewMongoDB(config)
 	if err := mongoStorage.Connect(ctx); err != nil {
 		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}
 	app.storage = mongoStorage
 	log.Println("MongoDB connected")
+
+	// Initialize Redis Cache
+	redisCache, err := cache.NewRedisCache(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Redis cache: %w", err)
+	}
+	app.cache = redisCache
+	log.Println("Redis cache connected")
 
 	app.setupRouter()
 	log.Println("Routes configured")

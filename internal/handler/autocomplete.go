@@ -193,6 +193,33 @@ func (h *AutocompleteHandler) GetStats(c *gin.Context) {
 	})
 }
 
+// HealthCheck handles GET /api/v1/health.
+func (h *AutocompleteHandler) HealthCheck(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	if err := h.storage.Ping(ctx); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status":    "unhealthy",
+			"timestamp": time.Now(),
+			"error":     "Database connection failed",
+		})
+		return
+	}
+
+	trieSize := h.trie.GetSize()
+
+	cacheStats := h.cache.GetStats()
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":      "healthy",
+		"timestamp":   time.Now(),
+		"version":     h.config.App.Version,
+		"uptime":      time.Since(h.startTime).String(),
+		"trie_size":   trieSize,
+		"cache_stats": cacheStats,
+	})
+}
+
 // generateCacheKey creates a cache key for prefix and limit combination.
 func (h *AutocompleteHandler) generateCacheKey(prefix string, limit int) string {
 	return strings.ToLower(prefix) + ":" + strconv.Itoa(limit)

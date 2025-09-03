@@ -12,6 +12,7 @@ import (
 
 	"github.com/amirzre/autocomplete-system/internal/cache"
 	"github.com/amirzre/autocomplete-system/internal/config"
+	"github.com/amirzre/autocomplete-system/internal/handler"
 	"github.com/amirzre/autocomplete-system/internal/storage"
 	"github.com/amirzre/autocomplete-system/internal/trie"
 	"github.com/gin-gonic/gin"
@@ -85,6 +86,7 @@ type App struct {
 	storage storage.StorageInterface
 	cache   cache.CacheInterface
 	trie    *trie.Trie
+	handler *handler.AutocompleteHandler
 }
 
 // initializeApp sets up all application components.
@@ -112,6 +114,10 @@ func initializeApp(ctx context.Context, config *config.Config) (*App, error) {
 	}
 	app.cache = redisCache
 	log.Println("Redis cache connected")
+
+	// Initialize Handlers
+	app.handler = handler.NewAutocompleteHandler(app.trie, app.storage, app.cache, config)
+	log.Println("Handler initialized")
 
 	app.setupRouter()
 	log.Println("Routes configured")

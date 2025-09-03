@@ -149,6 +149,50 @@ func (h *AutocompleteHandler) GetAutocompleteSuggestions(c *gin.Context) {
 	})
 }
 
+// GetStats handles GET /api/v1/stats.
+func (h *AutocompleteHandler) GetStats(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	totalQueries, err := h.storage.GetTotalQueryCount(ctx)
+	if err != nil {
+		log.Printf("Error getting total query count: %v", err)
+		totalQueries = 0
+	}
+
+	uniqueQueries, err := h.storage.GetUniqueQueryCount(ctx)
+	if err != nil {
+		log.Printf("Error getting unique query count: %v", err)
+		uniqueQueries = h.trie.GetSize()
+	}
+
+	topQueries := h.trie.GetTopQueries(10)
+
+	oneHourAgo := time.Now().Add(-1 * time.Hour)
+	queriesLastHour, err := h.storage.GetQueriesSince(ctx, oneHourAgo)
+	if err != nil {
+		log.Printf("Error getting queries from last hour: %v", err)
+	}
+
+	var lastHourCount int64
+	for _, query := range queriesLastHour {
+		lastHourCount += query.Frequency
+	}
+
+	uptime := time.Since(h.startTime)
+
+	c.JSON(http.StatusOK, model.StatsResponse{
+		TotalQueries:    totalQueries,
+		UniqueQueries:   uniqueQueries,
+		TopQueries:      topQueries,
+		QueriesLastHour: lastHourCount,
+		SystemInfo: model.SystemInfo{
+			Version:   h.config.App.Version,
+			StartTime: h.startTime,
+			Uptime:    uptime.String(),
+		},
+	})
+}
+
 // generateCacheKey creates a cache key for prefix and limit combination.
 func (h *AutocompleteHandler) generateCacheKey(prefix string, limit int) string {
 	return strings.ToLower(prefix) + ":" + strconv.Itoa(limit)

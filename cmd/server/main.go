@@ -134,6 +134,7 @@ func (app *App) setupRouter() {
 
 	v1.POST("/queries", app.handler.SubmitQuery)
 	v1.GET("/autocomplete", app.handler.GetAutocompleteSuggestions)
+	v1.GET("/stats", app.handler.GetStats)
 
 	app.router = router
 }

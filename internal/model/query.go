@@ -20,3 +20,22 @@ type Suggestion struct {
 	Text      string `json:"text"`
 	Frequency int64  `json:"frequency"`
 }
+
+// SubmitQueryRequest represents the request to submit a new query.
+type SubmitQueryRequest struct {
+	Query string `json:"query" validate:"required,min=1,max=100"`
+}
+
+// SubmitQueryResponse represents the response after submitting a query.
+type SubmitQueryResponse struct {
+	Message   string `json:"message"`
+	Query     string `json:"query"`
+	Frequency int64  `json:"frequency"`
+}
+
+// ErrorResponse represents an error response.
+type ErrorResponse struct {
+	Error   string `json:"error"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}

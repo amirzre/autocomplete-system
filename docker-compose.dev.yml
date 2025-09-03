@@ -41,9 +41,23 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+  
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   mongo-data:
+  redis-data:
 
 networks:
   backend:

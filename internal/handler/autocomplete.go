@@ -94,6 +94,61 @@ func (h *AutocompleteHandler) SubmitQuery(c *gin.Context) {
 	})
 }
 
+// GetAutocompleteSuggestions handles GET /api/v1/autocomplete.
+func (h *AutocompleteHandler) GetAutocompleteSuggestions(c *gin.Context) {
+	prefix := strings.TrimSpace(c.Query("q"))
+	limitStr := c.Query("limit")
+
+	if prefix == "" {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "Missing query parameter",
+			Code:    http.StatusBadRequest,
+			Message: "Please provide 'q' parameter with search prefix",
+		})
+		return
+	}
+
+	if len(prefix) > 50 {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{
+			Error:   "Prefix too long",
+			Code:    http.StatusBadRequest,
+			Message: "Search prefix must be 50 characters or less",
+		})
+		return
+	}
+
+	limit := h.config.App.DefaultSuggestions
+	if limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil {
+			if parsedLimit > 0 && parsedLimit <= h.config.App.MaxSuggestionsLimit {
+				limit = parsedLimit
+			} else if parsedLimit > h.config.App.MaxSuggestionsLimit {
+				limit = h.config.App.MaxSuggestionsLimit
+			}
+		}
+	}
+
+	cacheKey := h.generateCacheKey(prefix, limit)
+	if suggestions, found := h.cache.Get(cacheKey); found {
+		c.JSON(http.StatusOK, model.AutocompleteResponse{
+			Suggestions: suggestions,
+			Prefix:      prefix,
+			Count:       len(suggestions),
+		})
+		return
+	}
+
+	suggestions := h.trie.GetSuggestions(prefix, limit)
+
+	h.cache.Set(cacheKey, suggestions)
+
+	c.JSON(http.StatusOK, model.AutocompleteResponse{
+		Suggestions: suggestions,
+		Prefix:      prefix,
+		Count:       len(suggestions),
+	})
+}
+
 // generateCacheKey creates a cache key for prefix and limit combination.
 func (h *AutocompleteHandler) generateCacheKey(prefix string, limit int) string {
 	return strings.ToLower(prefix) + ":" + strconv.Itoa(limit)

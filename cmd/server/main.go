@@ -133,6 +133,7 @@ func (app *App) setupRouter() {
 	v1 := router.Group("/api/v1")
 
 	v1.POST("/queries", app.handler.SubmitQuery)
+	v1.GET("/autocomplete", app.handler.GetAutocompleteSuggestions)
 
 	app.router = router
 }

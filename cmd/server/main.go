@@ -129,6 +129,11 @@ func initializeApp(ctx context.Context, config *config.Config) (*App, error) {
 func (app *App) setupRouter() {
 	router := gin.New()
 
+	// API v1 routes
+	v1 := router.Group("/api/v1")
+
+	v1.POST("/queries", app.handler.SubmitQuery)
+
 	app.router = router
 }
 

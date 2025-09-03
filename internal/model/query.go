@@ -46,6 +46,22 @@ type AutocompleteResponse struct {
 	Count       int          `json:"count"`
 }
 
+// StatsResponse represents system statistics.
+type StatsResponse struct {
+	TotalQueries    int64        `json:"total_queries"`
+	UniqueQueries   int64        `json:"unique_queries"`
+	TopQueries      []Suggestion `json:"top_queries"`
+	QueriesLastHour int64        `json:"queries_last_hour"`
+	SystemInfo      SystemInfo   `json:"system_info"`
+}
+
+// SystemInfo represents system information.
+type SystemInfo struct {
+	Version   string    `json:"version"`
+	StartTime time.Time `json:"start_time"`
+	Uptime    string    `json:"uptime"`
+}
+
 // ErrorResponse represents an error response.
 type ErrorResponse struct {
 	Error   string `json:"error"`

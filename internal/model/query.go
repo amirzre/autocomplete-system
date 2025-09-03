@@ -33,6 +33,19 @@ type SubmitQueryResponse struct {
 	Frequency int64  `json:"frequency"`
 }
 
+// AutocompleteRequest represents the request for autocomplete suggestions.
+type AutocompleteRequest struct {
+	Prefix string `json:"prefix" form:"q" validate:"required,min=1,max=50"`
+	Limit  int    `json:"limit" form:"limit" validate:"min=1,max=20"`
+}
+
+// AutocompleteResponse represents the autocomplete API response.
+type AutocompleteResponse struct {
+	Suggestions []Suggestion `json:"suggestions"`
+	Prefix      string       `json:"prefix"`
+	Count       int          `json:"count"`
+}
+
 // ErrorResponse represents an error response.
 type ErrorResponse struct {
 	Error   string `json:"error"`

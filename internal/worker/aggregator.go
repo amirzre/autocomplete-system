@@ -62,6 +62,31 @@ func (a *Aggregator) Start(ctx context.Context) error {
 	return nil
 }
 
+// Stop gracefully stops the aggregation worker.
+func (a *Aggregator) Stop() error {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
+	if !a.running {
+		return nil
+	}
+
+	log.Println("Stopping aggregation worker...")
+	close(a.stopCh)
+	a.wg.Wait()
+	a.running = false
+
+	log.Println("Aggregation worker stopped")
+	return nil
+}
+
+// IsRunning returns whether the worker is currently running.
+func (a *Aggregator) IsRunning() bool {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+	return a.running
+}
+
 // runAggregation runs the main aggregation loop
 func (a *Aggregator) runAggregation(ctx context.Context) {
 	defer a.wg.Done()

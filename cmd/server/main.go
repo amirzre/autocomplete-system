@@ -15,6 +15,7 @@ import (
 	"github.com/amirzre/autocomplete-system/internal/handler"
 	"github.com/amirzre/autocomplete-system/internal/storage"
 	"github.com/amirzre/autocomplete-system/internal/trie"
+	"github.com/amirzre/autocomplete-system/internal/worker"
 	"github.com/gin-gonic/gin"
 )
 
@@ -87,6 +88,7 @@ type App struct {
 	cache   cache.CacheInterface
 	trie    *trie.Trie
 	handler *handler.AutocompleteHandler
+	worker  *worker.Aggregator
 }
 
 // initializeApp sets up all application components.
@@ -115,10 +117,18 @@ func initializeApp(ctx context.Context, config *config.Config) (*App, error) {
 	app.cache = redisCache
 	log.Println("Redis cache connected")
 
+	// Initialize Worker
+	app.worker = worker.NewAggregator(app.trie, app.storage, &config.Worker)
+	if err := app.worker.Start(ctx); err != nil {
+		return nil, fmt.Errorf("failed to start worker: %w", err)
+	}
+	log.Println("Background worker started")
+
 	// Initialize Handlers
 	app.handler = handler.NewAutocompleteHandler(app.trie, app.storage, app.cache, config)
 	log.Println("Handler initialized")
 
+	// Setup router
 	app.setupRouter()
 	log.Println("Routes configured")
 
@@ -148,6 +158,13 @@ func (app *App) setupRouter() {
 // cleanup performs graceful cleanup of resources.
 func (app *App) cleanup(ctx context.Context) {
 	log.Println("Cleaning up resources...")
+
+	// Stop worker
+	if app.worker != nil {
+		if err := app.worker.Stop(); err != nil {
+			log.Printf("Error stopping worker: %v", err)
+		}
+	}
 
 	// Disconnect from storage
 	if app.storage != nil {

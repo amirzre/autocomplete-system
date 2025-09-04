@@ -13,6 +13,7 @@ type Config struct {
 	Server   ServerConfig
 	DataBase DatabaseConfig
 	Cache    CacheConfig
+	Worker   WorkerConfig
 	App      AppConfig
 }
 
@@ -51,6 +52,13 @@ type CacheConfig struct {
 	WriteTimeout time.Duration
 	TTL          time.Duration
 	MaxSize      int
+}
+
+// WorkerConfig holds worker configuration.
+type WorkerConfig struct {
+	AggregationInterval time.Duration
+	BatchSize           int
+	Enabled             bool
 }
 
 // AppConfig holds general app configuration.
@@ -98,6 +106,11 @@ func Load() *Config {
 			WriteTimeout: getDurationEnv("REDIS_WRITE_TIMEOUT", 3*time.Second),
 			TTL:          getDurationEnv("REDIS_TTL", 1*time.Hour),
 			MaxSize:      getIntEnv("REDIS_MAX_SIZE", 10000),
+		},
+		Worker: WorkerConfig{
+			AggregationInterval: getDurationEnv("WORKER_AGGREGATION_INTERVAL", 5*time.Minute),
+			BatchSize:           getIntEnv("WORKER_BATCH_SIZE", 100),
+			Enabled:             getBoolEnv("WORKER_ENABLED", true),
 		},
 		App: AppConfig{
 			Name:                getEnv("APP_NAME", "Autocomplete System"),
@@ -154,6 +167,16 @@ func getDurationEnv(key string, fallback time.Duration) time.Duration {
 	if value := os.Getenv(key); value != "" {
 		if duration, err := time.ParseDuration(value); err == nil {
 			return duration
+		}
+	}
+
+	return fallback
+}
+
+func getBoolEnv(key string, fallback bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
 		}
 	}
 

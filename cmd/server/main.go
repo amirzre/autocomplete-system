@@ -138,6 +138,10 @@ func (app *App) setupRouter() {
 	v1.GET("/autocomplete", app.handler.GetAutocompleteSuggestions)
 	v1.GET("/stats", app.handler.GetStats)
 
+	cache := v1.Group("/cache")
+	cache.GET("/stats", app.handler.GetCacheStats)
+	cache.DELETE("/", app.handler.ClearCache)
+
 	app.router = router
 }
 

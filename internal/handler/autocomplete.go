@@ -220,6 +220,20 @@ func (h *AutocompleteHandler) HealthCheck(c *gin.Context) {
 	})
 }
 
+// GetCacheStats handles GET /api/v1/cache/stats.
+func (h *AutocompleteHandler) GetCacheStats(c *gin.Context) {
+	stats := h.cache.GetStats()
+	c.JSON(http.StatusOK, stats)
+}
+
+// ClearCache handles DELETE /api/v1/cache.
+func (h *AutocompleteHandler) ClearCache(c *gin.Context) {
+	h.cache.Clear()
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Cache cleared successfully",
+	})
+}
+
 // generateCacheKey creates a cache key for prefix and limit combination.
 func (h *AutocompleteHandler) generateCacheKey(prefix string, limit int) string {
 	return strings.ToLower(prefix) + ":" + strconv.Itoa(limit)

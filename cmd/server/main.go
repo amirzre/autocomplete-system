@@ -139,6 +139,10 @@ func initializeApp(ctx context.Context, config *config.Config) (*App, error) {
 func (app *App) setupRouter() {
 	router := gin.New()
 
+	// Global middleware
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
+
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 
